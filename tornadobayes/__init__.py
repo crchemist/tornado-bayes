@@ -26,7 +26,6 @@ class BayesBaseClient(object):
         without_one_or_two_words = ONE_OR_TWO_WORDS.sub('', sep_by_non_alpha)
         without_dots = without_one_or_two_words.replace('.', '')
         text_chunks = without_dots.split()
-        #text_chunks = self.stopwords.to_re().sub('', without_dots).split()
 
         freqs = {}
         for word in text_chunks:
@@ -39,9 +38,12 @@ class BayesBaseClient(object):
     def remove_category(self, category):
         del self.categories[category]
 
+    def get_categories(self, return):
+        return self.categories.items()
+
     def classify(self, data):
         scores = {}
-        for category, words in self.categories.items():
+        for category, words in self.get_categories():
             words_count_per_category = reduce(lambda x,y: x+y,
                 map(float, words.values()))
 
