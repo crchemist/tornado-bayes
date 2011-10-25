@@ -1,25 +1,22 @@
 import re
 import math
 
-from brukva import Client
+from tornadobayes import storage
 
 NON_ALPHA = re.compile(r'[^\w\.]', re.IGNORECASE)
 ONE_OR_TWO_WORDS = re.compile(r'\b[^\s]{1,2}\b', re.IGNORECASE)
 
-class BayesBaseClient(object):
+class BayesClient(object):
 
-    def __init__(self):
-        self.categories = {}
+    def __init__(self, storage_class, *args, **kwargs):
+        self.storage = storage_class(*args, **kwargs)
 
     def train(self, data, category):
         category = category.lower()
-        self.add_category(category)
+        self.storage.add_category(category)
 
         for word, count in self.count_occurance(data):
-            self.add_word_to_category(category, word, count)
-
-    def add_word_to_category(self, category, word, count):
-        self.categories[category][word] = self.categories[category].get(word, 0) + count
+            self.storage.add_word_to_category(category, word, count)
 
     def count_occurance(self, text=''):
         sep_by_non_alpha = NON_ALPHA.sub(' ', text.lower())
@@ -32,23 +29,15 @@ class BayesBaseClient(object):
             freqs[word] = freqs.get(word, 0) + 1
         return freqs.items()
 
-    def add_category(self, category):
-        self.categories.setdefault(category, {})
-
-    def remove_category(self, category):
-        del self.categories[category]
-
-    def get_categories(self, return):
-        return self.categories.items()
 
     def classify(self, data):
         scores = {}
-        for category, words in self.get_categories():
+        for category, words in self.storage.get_categories():
             words_count_per_category = reduce(lambda x,y: x+y,
                 map(float, words.values()))
 
             if words_count_per_category == 0:
-                self.remove_category(category)
+                self.storage.remove_category(category)
 
             scores[category] = 0
             for word, count in self.count_occurance(data):
@@ -61,15 +50,3 @@ class BayesBaseClient(object):
                 scores[category] += tmp_score / words_count_per_category
 
         return scores
-
-
-class BayesRedisClient(BayesBaseClient):
-
-    def __init__(self, redis_host, redis_port):
-        self.redis_host = redis_host
-        self.redis_port = redis_port
-        self.redis_client = Client(redis_host, redis_port)
-        self.redis_client.connect()
-
-    def swith_db(self, db_index):
-        self.redis_client.select(db_index)
