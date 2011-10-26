@@ -11,8 +11,8 @@ ONE_OR_TWO_WORDS = re.compile(r'\b[^\s]{1,2}\b', re.IGNORECASE)
 
 class BayesClient(object):
 
-    def __init__(self, storage_obj=None):
-        self.storage = MemoryStorage() if storage_obj is None else storage_obj
+    def __init__(self, storage_obj):
+        self.storage = storage_obj 
 
     @adisp.async
     @adisp.process
