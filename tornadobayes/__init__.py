@@ -1,5 +1,8 @@
 import re
 import math
+from functools import partial
+
+from tornadotools import adisp
 
 from tornadobayes import storage
 
@@ -8,39 +11,44 @@ ONE_OR_TWO_WORDS = re.compile(r'\b[^\s]{1,2}\b', re.IGNORECASE)
 
 class BayesClient(object):
 
-    def __init__(self, storage_class, *args, **kwargs):
-        self.storage = storage_class(*args, **kwargs)
+    def __init__(self, storage_obj=None):
+        self.storage = MemoryStorage() if storage_obj is None else storage_obj
 
-    def train(self, data, category):
-        category = category.lower()
-        self.storage.add_category(category)
+    @adisp.async
+    @adisp.process
+    def train(self, data, category, callback=None):
+        yield self.storage.add_category(category)
+        category_words = {}
+        for word, count in self.__count_occurance(data):
+            category_words[word] = count
+        yield self.storage.add_words_to_category(category, category_words)
+        callback({'result': 'OK'})
 
-        for word, count in self.count_occurance(data):
-            self.storage.add_word_to_category(category, word, count)
-
-    def count_occurance(self, text=''):
+    def __count_occurance(self, text=''):
         sep_by_non_alpha = NON_ALPHA.sub(' ', text.lower())
         without_one_or_two_words = ONE_OR_TWO_WORDS.sub('', sep_by_non_alpha)
         without_dots = without_one_or_two_words.replace('.', '')
         text_chunks = without_dots.split()
-
         freqs = {}
         for word in text_chunks:
             freqs[word] = freqs.get(word, 0) + 1
         return freqs.items()
 
 
-    def classify(self, data):
+    @adisp.async
+    @adisp.process
+    def classify(self, data, callback=None):
         scores = {}
-        for category, words in self.storage.get_categories():
+        categories = yield self.storage.get_categories()
+        for category, words in categories:
             words_count_per_category = reduce(lambda x,y: x+y,
                 map(float, words.values()))
 
             if words_count_per_category == 0:
-                self.storage.remove_category(category)
+                yield self.storage.remove_category(category)
 
             scores[category] = 0
-            for word, count in self.count_occurance(data):
+            for word, count in self.__count_occurance(data):
                 tmp_score = words.get(word)
                 if tmp_score and float(tmp_score) > 0.0:
                     tmp_score = float(tmp_score)
@@ -48,5 +56,4 @@ class BayesClient(object):
                     tmp_score = 0.1
 
                 scores[category] += tmp_score / words_count_per_category
-
-        return scores
+        callback(scores)
