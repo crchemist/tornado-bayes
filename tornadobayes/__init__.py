@@ -56,5 +56,4 @@ class BayesClient(object):
                     tmp_score = 0.1
 
                 scores[category] += tmp_score / words_count_per_category
-        import pdb;pdb.set_trace()
         callback(scores)
