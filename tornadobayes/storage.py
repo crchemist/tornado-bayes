@@ -48,8 +48,13 @@ class RedisStorage(Storage):
         categories = {}
         categories_names = yield self.client.async.smembers(self.CATEGORIES_KEY)
         for name in categories_names:
-            categories[name] = yield self.client.async.hgetall(
+            category_words = yield self.client.async.hgetall(
                 self.__redis_category_key(name))
+            category_words_enc = {}
+            for word, count in category_words.items():
+                category_words_enc[word.decode('UTF-8')] = count
+            categories[name] = category_words_enc
+
         callback(categories.items())
 
     def __redis_category_key(self, category):

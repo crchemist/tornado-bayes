@@ -6,8 +6,8 @@ from tornadotools import adisp
 
 from tornadobayes import storage
 
-NON_ALPHA = re.compile(r'[^\w\.]', re.IGNORECASE)
-ONE_OR_TWO_WORDS = re.compile(r'\b[^\s]{1,2}\b', re.IGNORECASE)
+NON_ALPHA = re.compile(r'[^\w\.]', re.IGNORECASE | re.UNICODE)
+ONE_OR_TWO_WORDS = re.compile(r'\b[^\s]{1,2}\b', re.IGNORECASE | re.UNICODE)
 
 class BayesClient(object):
 
@@ -56,4 +56,5 @@ class BayesClient(object):
                     tmp_score = 0.1
 
                 scores[category] += tmp_score / words_count_per_category
+        import pdb;pdb.set_trace()
         callback(scores)
