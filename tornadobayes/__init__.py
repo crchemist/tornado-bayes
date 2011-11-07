@@ -17,6 +17,8 @@ class BayesClient(object):
     @adisp.async
     @adisp.process
     def train(self, data, category, callback=None):
+        words_cnt_cat_key = self.CATEGORY_WORDS_COUNT_PREFIX % category
+        self.client.async.delete(words_cnt_cat_key)
         yield self.storage.add_category(category)
         category_words = {}
         for word, count in self.__count_occurance(data):
@@ -41,19 +43,14 @@ class BayesClient(object):
         scores = {}
         categories = yield self.storage.get_categories()
         for category, words in categories:
-            words_count_per_category = reduce(lambda x,y: x+y,
-                map(float, words.values()))
-
+            words_count_per_category = yield self.storage.words_count_in_cat(
+                category, words)
             if words_count_per_category == 0:
                 yield self.storage.remove_category(category)
 
             scores[category] = 0
             for word, count in self.__count_occurance(data):
-                tmp_score = words.get(word)
-                if tmp_score and float(tmp_score) > 0.0:
-                    tmp_score = float(tmp_score)
-                else:
-                    tmp_score = 0.1
-
+                tmp_score = float(words.get(word, 0.1))
                 scores[category] += tmp_score / words_count_per_category
+
         callback(scores)
