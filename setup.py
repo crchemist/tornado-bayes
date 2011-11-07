@@ -1,4 +1,5 @@
 from setuptools import setup, find_packages
+from setuptools import Extension
 import sys, os
 
 version = '0.0'
@@ -20,6 +21,9 @@ setup(name='tornado-bayes',
       install_requires=[
           # -*- Extra requirements: -*-
           'tornadotools'
+      ],
+      ext_modules = [
+          Extension('tornadobayes._bayesutils', ['tornadobayes/_bayesutils.cpp']),
       ],
       entry_points="""
       # -*- Entry points: -*-
