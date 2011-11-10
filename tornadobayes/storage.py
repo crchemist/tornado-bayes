@@ -22,12 +22,19 @@ class RedisStorage(Storage):
         self.client = Client(redis_host, redis_port)
         self.client.connect()
 
+        # cache categories data from db in dict
+        self.__cat_cache = {}
+
     @adisp.async
     @adisp.process
     def add_category(self, category, callback):
         redis_result = yield self.client.async.sadd(self.CATEGORIES_KEY,
             category)
+        self.__flush_cat_cache()
         callback(category)
+
+    def __flush_cat_cache(self):
+        self.__cat_cache.clear()
 
     @adisp.async
     @adisp.process
@@ -54,6 +61,7 @@ class RedisStorage(Storage):
     @adisp.process
     def remove_category(self, category, callback=None):
         self.client.async.srem(self.CATEGORIES_KEY, category.lower())
+        self.__flush_cat_cache()
         callback(category)
 
     @adisp.async
@@ -63,16 +71,24 @@ class RedisStorage(Storage):
         category_key = self.__redis_category_key(category)
         for word, count in words.items():
             yield self.client.async.hincrby(category_key, word, count)
+        self.__flush_cat_cache()
         callback(category)
 
     @adisp.async
     @adisp.process
     def get_categories(self, callback=None):
         categories = {}
-        categories_names = yield self.client.async.smembers(self.CATEGORIES_KEY)
+        if self.__cat_cache:
+            categories_names = self.__cat_cache.keys()
+        else:
+            categories_names = yield self.client.async.smembers(self.CATEGORIES_KEY)
         for name in categories_names:
-            category_words = yield self.client.async.hgetall(
-                self.__redis_category_key(name))
+            if self.__cat_cache:
+                category_words = self.__cat_cache.get(name)
+            else:
+                category_words = yield self.client.async.hgetall(
+                    self.__redis_category_key(name))
+                self.__cat_cache[name] = category_words
             category_words_enc = {}
             for word, count in category_words.items():
                 category_words_enc[word.decode('UTF-8')] = count
