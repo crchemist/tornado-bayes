@@ -17,8 +17,7 @@ class BayesClient(object):
     @adisp.async
     @adisp.process
     def train(self, data, category, callback=None):
-        words_cnt_cat_key = self.CATEGORY_WORDS_COUNT_PREFIX % category
-        self.client.async.delete(words_cnt_cat_key)
+        yield self.storage.flush_words_count_cache(category)
         yield self.storage.add_category(category)
         category_words = {}
         for word, count in self.__count_occurance(data):

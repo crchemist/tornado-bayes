@@ -45,6 +45,13 @@ class RedisStorage(Storage):
 
     @adisp.async
     @adisp.process
+    def flush_words_count_cache(self, category, callback):
+        words_cnt_cat_key = self.CATEGORY_WORDS_COUNT_PREFIX % category
+        yield self.client.async.delete(words_cnt_cat_key)
+        callback(category)
+
+    @adisp.async
+    @adisp.process
     def remove_category(self, category, callback=None):
         self.client.async.srem(self.CATEGORIES_KEY, category.lower())
         callback(category)
